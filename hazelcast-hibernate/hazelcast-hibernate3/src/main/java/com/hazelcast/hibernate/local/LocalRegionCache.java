@@ -67,6 +67,7 @@ public class LocalRegionCache implements RegionCache {
     protected final ConcurrentMap<Object, Value> cache;
     protected final Comparator versionComparator;
     protected MapConfig config;
+    private static String CLEAR_ALL = "CLEAR_ALL";
 
     /**
      * @param name              the name for this region cache, which is also used to retrieve configuration/topic
@@ -150,6 +151,12 @@ public class LocalRegionCache implements RegionCache {
         return new MessageListener<Object>() {
             public void onMessage(final Message<Object> message) {
                 final Invalidation invalidation = (Invalidation) message.getMessageObject();
+
+                if (invalidation.getKey().equals(CLEAR_ALL)) {
+                    cache.clear();
+                    return;
+                }
+
                 if (versionComparator != null) {
                     final Value value = cache.get(invalidation.getKey());
                     if (value != null) {
@@ -214,6 +221,10 @@ public class LocalRegionCache implements RegionCache {
 
     public void clear() {
         cache.clear();
+        if (topic != null) {
+            LOGGER.warn(topic.getName() + " CLEAR_ALL");
+            topic.publish(createMessage(CLEAR_ALL, null, null));
+        }
     }
 
     public long size() {
