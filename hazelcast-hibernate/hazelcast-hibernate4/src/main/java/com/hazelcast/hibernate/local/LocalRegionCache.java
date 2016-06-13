@@ -68,6 +68,8 @@ public class LocalRegionCache implements RegionCache {
     protected final Comparator versionComparator;
     protected MapConfig config;
 
+    private static final String CLEAR_ALL = "CLEAR_ALL";
+
     /**
      * @param name              the name for this region cache, which is also used to retrieve configuration/topic
      * @param hazelcastInstance the {@code HazelcastInstance} to which this region cache belongs, used to retrieve
@@ -150,6 +152,12 @@ public class LocalRegionCache implements RegionCache {
         return new MessageListener<Object>() {
             public void onMessage(final Message<Object> message) {
                 final Invalidation invalidation = (Invalidation) message.getMessageObject();
+
+                if (invalidation.getKey().equals(CLEAR_ALL)) {
+                    cache.clear();
+                    return;
+                }
+
                 if (versionComparator != null) {
                     final Value value = cache.get(invalidation.getKey());
                     if (value != null) {
@@ -214,6 +222,9 @@ public class LocalRegionCache implements RegionCache {
 
     public void clear() {
         cache.clear();
+        if (topic != null) {
+            topic.publish(createMessage(CLEAR_ALL, null, null));
+        }
     }
 
     public long size() {
